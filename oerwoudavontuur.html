@@ -103,9 +103,9 @@ details p{margin:8px 0 0}
   </div>
 
   <div class="wpad" id="wpad" hidden>
-    <button type="button" tabindex="-1" data-weapon="speer"><b>Speer</b><small>gewoon</small></button>
-    <button type="button" tabindex="-1" data-weapon="boog"><b>Boog</b><small>snel, goed mikken</small></button>
-    <button type="button" tabindex="-1" data-weapon="vuur"><b>Vuurspeer</b><small>dubbel, niet te ontwijken</small></button>
+    <button type="button" tabindex="-1" data-weapon="speer"><b>Speer</b><small>snel en sterk</small></button>
+    <button type="button" tabindex="-1" data-weapon="boog"><b>Boog</b><small>2 pijlen tegelijk</small></button>
+    <button type="button" tabindex="-1" data-weapon="vuur"><b>Vuurspeer</b><small>3 schade, niet te ontwijken</small></button>
   </div>
 
   <details>
@@ -130,16 +130,17 @@ const $=id=>document.getElementById(id);
 const NEED={1:10,2:12,3:13,4:2};
 const LV={
  1:{naam:'Het lianenpad',item:"mango's",doel:"Wandel over het pad door het oerwoud, spring over de rivieren en hak lianen door voor mango's.",
-    tip:"Loop met de pijlknoppen onder het speelveld of tik op de grond. Spring tijdens het lopen over een rivier. Hak met de knop Hak of tik op een liaan. Bij 4 mango's krijg je een groot kapmes dat in één slag hakt. Toetsenbord: pijltjes, pijl omhoog springt, spatie hakt."},
+    tip:"Loop met de pijlknoppen onder het speelveld of tik op de grond. Spring tijdens het lopen over een rivier. Hak met de knop Hak of tik op een liaan. Bij 6 mango's krijg je een groot kapmes. In het water vallen kost een mango. Toetsenbord: pijltjes, pijl omhoog springt, spatie hakt."},
  2:{naam:'De graafplek',item:'insecten',doel:'Graaf in de grond en vang de insecten die tevoorschijn komen.',
     tip:'Tik twee keer op een plek gras om te graven. Komt er een insect boven, tik er dan snel op voor het wegkruipt. Hoopjes met rode mieren kun je beter laten liggen, die bijten en kosten je een insect. Toetsenbord: pijltjes en spatie.'},
  3:{naam:'De rivier',item:'vissen',doel:'Spies vissen met je speer vanaf de boomstam over de rivier.',
     tip:"Tik in het water om je speer te gooien. Tik op de boomstam om je te verplaatsen. Bij 5 vissen krijg je een drietand die makkelijker raakt. Piranha's kosten een vis en de krokodil breekt je speer. Toetsenbord: pijltjes om te lopen, spatie om recht naar beneden te gooien."},
  4:{naam:'De nacht van de panters',item:'panters',doel:'Versla twee sterke panters voor ze bij je kampvuur zijn.',
-    tip:'Kies je wapen onder het speelveld en tik op een panter om te gooien. De boog schiet snel maar je moet goed mikken. De vuurspeer doet dubbele schade en panters kunnen hem niet ontwijken. De panters hebben 6 en 8 levens en springen naar je vuur. Toetsenbord: 1, 2, 3 kiest, spatie gooit.'}
+    tip:'Kies je wapen onder het speelveld en tik op een panter om te gooien. De boog schiet twee pijlen tegelijk. De vuurspeer doet drie keer schade en panters kunnen hem niet ontwijken. Je hebt 4 harten. Toetsenbord: 1, 2, 3 kiest, spatie gooit.'}
 };
 const S={screen:'intro',level:1,counts:{1:0,2:0,3:0,4:0},hearts:3,muted:false,up1:false,up3:false,w4:'speer'};
-const WEAP={speer:{naam:'Speer',cd:0.55,v:660,dmg:1,hb:1,dodge:true},boog:{naam:'Boog',cd:0.28,v:980,dmg:1,hb:0.55,dodge:true},vuur:{naam:'Vuurspeer',cd:1.05,v:600,dmg:2,hb:1,dodge:false}};
+const WEAP={speer:{naam:'Speer',cd:0.42,v:720,dmg:1,hb:1.25,dodge:true},boog:{naam:'Boog',cd:0.24,v:1000,dmg:1,hb:0.8,dodge:true,n:2},vuur:{naam:'Vuurspeer',cd:0.85,v:650,dmg:3,hb:1.2,dodge:false}};
+const MAXH=4;
 let L=null,time=0,CAM=0,BN=null;
 function banner(t){BN={t,life:2.8};[392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>snd(f,0.18,'triangle',0.07),i*90));}
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -264,12 +265,12 @@ function drawPanther(c,x,y,dead,angry){
 /* ---------- level 1: lianen en rivieren ---------- */
 function L1(){
   const G=440,WORLD=2600,GRAV=1500,JV=-560,SPEED=230;
-  const rivers=[{a:760,b:870},{a:1480,b:1610},{a:2120,b:2230}];
+  const rivers=[{a:760,b:895},{a:1460,b:1610},{a:2100,b:2240}];
   const inRiver=x=>rivers.find(r=>x>r.a&&x<r.b);
   const p={x:160,y:G,vx:0,vy:0,air:false,tg:null,face:1,swing:0,stun:0,q:false,safe:160,hint:0};
   const lianas=[],mangos=[],wasps=[];let cam=0;CAM=0;
   const slots=[];for(let x=270;x<WORLD-90;x+=rnd(125,165)){if(!rivers.some(r=>x>r.a-60&&x<r.b+60))slots.push(x);}
-  function fresh(l,x,grow){Object.assign(l,{x,len:rnd(310,380),hp:2,mango:Math.random()<0.7,wasp:Math.random()<0.2,ph:rnd(0,TAU),shake:0,fall:0,grow,wait:0});return l;}
+  function fresh(l,x,grow){Object.assign(l,{x,len:rnd(310,380),hp:2,mango:Math.random()<0.55,wasp:Math.random()<0.33,ph:rnd(0,TAU),shake:0,fall:0,grow,wait:0});return l;}
   slots.forEach(x=>lianas.push(fresh({},x,1)));
   lianas.slice(0,3).forEach(l=>{l.mango=true;});lianas[0].wasp=false;
   function dirNow(){let d=0;if(keys.ArrowLeft||keys.a)d=-1;if(keys.ArrowRight||keys.d)d=1;if(!d&&p.tg!==null&&Math.abs(p.tg-p.x)>4)d=Math.sign(p.tg-p.x);return d;}
@@ -288,7 +289,7 @@ function L1(){
       if(l.wasp){for(let i=0;i<7;i++)wasps.push({x:l.x+rnd(-10,10),y:l.len*0.5,t:4.5,ph:rnd(0,6)});toast(l.x,l.len*0.5-30,'Wespen!','#ffd84d');snd(520,0.35,'sawtooth',0.03);}
     }else snd(240,0.07,'square',0.04);
   }
-  function collect(m,i){mangos.splice(i,1);S.counts[1]++;if(!S.up1&&S.counts[1]>=4){S.up1=true;banner('Nieuw wapen: groot kapmes!');}snd(880,0.1,'triangle');toast(m.x,m.y-30,'+1 mango','#ffd166');burst(m.x,m.y,'#f6a21c',8,120);check();}
+  function collect(m,i){mangos.splice(i,1);S.counts[1]++;if(!S.up1&&S.counts[1]>=6){S.up1=true;banner('Nieuw wapen: groot kapmes!');}snd(880,0.1,'triangle');toast(m.x,m.y-30,'+1 mango','#ffd166');burst(m.x,m.y,'#f6a21c',8,120);check();}
   function splash(x,y){burst(x,y,'#9fd3ff',14,180);snd(150,0.3,'sine',0.08);}
   return{
     tap(x,y){
@@ -326,7 +327,7 @@ function L1(){
           const r=inRiver(p.x);
           if(!r){p.y=G;p.vy=0;p.air=false;}
           else if(p.y>G+55){
-            splash(p.x,G);toast(p.x,G-120,'Plons!','#9fd3ff');
+            splash(p.x,G);if(S.counts[1]>0){S.counts[1]--;toast(p.x,G-120,'Plons! -1 mango','#9fd3ff');updHud();}else toast(p.x,G-120,'Plons!','#9fd3ff');
             p.x=p.safe<=r.a+1?r.a-22:r.b+22;p.y=G;p.vy=0;p.vx=0;p.air=false;p.stun=0.8;p.tg=null;p.q=false;
           }
         }
@@ -349,14 +350,14 @@ function L1(){
           }
           if(near){collect(m,i);continue;}
         }else{
-          m.t+=dt;if(m.t>9){mangos.splice(i,1);continue;}
+          m.t+=dt;if(m.t>5.5){mangos.splice(i,1);continue;}
           if(near){collect(m,i);continue;}
         }
       }
       for(let i=wasps.length-1;i>=0;i--){
         const w=wasps[i];w.t-=dt;if(w.t<=0){wasps.splice(i,1);continue;}
         const tx=p.x+Math.sin(time*5+w.ph)*18,ty=p.y-60+Math.cos(time*7+w.ph)*18;
-        const dx=tx-w.x,dy=ty-w.y,d=Math.hypot(dx,dy)||1;w.x+=dx/d*115*dt;w.y+=dy/d*115*dt;
+        const dx=tx-w.x,dy=ty-w.y,d=Math.hypot(dx,dy)||1;w.x+=dx/d*140*dt;w.y+=dy/d*140*dt;
         if(p.stun<=0&&Math.hypot(w.x-p.x,w.y-(p.y-60))<26){
           p.stun=1.1;p.tg=null;p.q=false;
           if(S.counts[1]>0){S.counts[1]--;toast(p.x,p.y-120,'Au! -1 mango','#ff8a65');}else toast(p.x,p.y-120,'Au!','#ff8a65');
@@ -572,7 +573,7 @@ function L4(){
   const trees=[];for(let i=0;i<14;i++)trees.push({x:rnd(-20,W+20),w:rnd(20,45),h:rnd(180,330)});
   function spawn(){
     const side=Math.random()<0.5?-1:1,second=S.counts[4]>=1;
-    pan={side,x:side<0?-110:W+110,y:GY,jy:0,vy:0,vx:0,hp:second?8:6,max:second?8:6,sp:second?160:125,big:second?1.2:1,
+    pan={side,x:side<0?-110:W+110,y:GY,jy:0,vy:0,vx:0,hp:second?8:6,max:second?8:6,sp:second?135:105,big:second?1.2:1,
       state:'eyes',t:1.4,flinch:0,dead:0,leapCd:0,dodgeCd:0,knocked:false};
     snd(55,0.7,'sawtooth',0.06);
   }
@@ -581,7 +582,8 @@ function L4(){
     const w=WEAP[S.w4];
     if(p.cool>0)return;p.cool=w.cd;p.anim=1;
     const sx=PX,sy=GY-62,dx=tx-sx,dy=ty-sy,d=Math.hypot(dx,dy)||1;
-    spears.push({x:sx,y:sy,vx:dx/d*w.v,vy:dy/d*w.v,seen:!w.dodge,kind:S.w4,dmg:w.dmg,hb:w.hb});if(Math.abs(dx)>10)p.face=dx<0?-1:1;
+    const ang=Math.atan2(dy,dx),spread=w.n===2?[-0.06,0.06]:[0];
+    spread.forEach(o=>spears.push({x:sx,y:sy,vx:Math.cos(ang+o)*w.v,vy:Math.sin(ang+o)*w.v,seen:!w.dodge,kind:S.w4,dmg:w.dmg,hb:w.hb}));if(Math.abs(dx)>10)p.face=dx<0?-1:1;
     if(S.w4==='boog')snd(900,0.06,'triangle',0.05);else if(S.w4==='vuur')snd(200,0.25,'sawtooth',0.05);else snd(650,0.08,'triangle',0.04);
   }
   function toEdge(){pan.side=Math.random()<0.5?-1:1;pan.x=pan.side<0?-110:W+110;pan.jy=0;pan.vy=0;}
@@ -607,11 +609,11 @@ function L4(){
         if(P.state==='eyes'){P.t-=dt;if(P.t<=0){P.state='approach';snd(70,0.5,'sawtooth',0.05);}}
         else if(P.state==='approach'){
           if(P.flinch>0){P.flinch-=dt;P.x+=P.side*90*dt;}else P.x+=-P.side*P.sp*dt;
-          if(dist<270&&P.leapCd<=0&&P.flinch<=0){P.state='crouch';P.t=0.45;snd(60,0.45,'sawtooth',0.07);}
+          if(dist<270&&P.leapCd<=0&&P.flinch<=0){P.state='crouch';P.t=0.7;snd(60,0.45,'sawtooth',0.07);}
           else if(dist<70){if(hitPlayer())return;}
           else if(P.dodgeCd<=0&&P.flinch<=0){
             const s=spears.find(s=>!s.seen&&Math.abs(s.x-P.x)<170&&Math.sign(s.vx)===Math.sign(P.x-s.x)&&s.y>GY-120);
-            if(s){s.seen=true;P.dodgeCd=0.9;if(Math.random()<0.5){P.state='hop';P.vy=-560;toast(P.x,GY-230,'Hij springt!','#ffee58');}}
+            if(s){s.seen=true;P.dodgeCd=0.9;if(Math.random()<0.3){P.state='hop';P.vy=-560;toast(P.x,GY-230,'Hij springt!','#ffee58');}}
           }
         }
         else if(P.state==='hop'){
@@ -638,7 +640,7 @@ function L4(){
           if(Math.abs(s.x-a.x)<60*P.big*s.hb&&Math.abs(s.y-a.y)<42*P.big*Math.max(0.7,s.hb)){
             const fire=s.kind==='vuur';
             P.hp=Math.max(0,P.hp-s.dmg);burst(s.x,s.y,fire?'#ff9800':'#ffcc80',fire?16:8,fire?200:160);snd(fire?180:300,0.12,'square',0.05);
-            toast(P.x,a.y-70,fire?'Raak! -2':'Raak!',fire?'#ff9800':'#ffd166');spears.splice(i,1);
+            toast(P.x,a.y-70,fire?'Raak! -3':'Raak!',fire?'#ff9800':'#ffd166');spears.splice(i,1);
             if(P.state==='pounce'){P.knocked=true;P.vx=P.side*(fire?340:260);}
             else if(P.state==='approach'){P.flinch=fire?0.6:0.25;}
             if(P.hp<=0){P.state='dead';S.counts[4]++;toast(P.x,a.y-90,'Panter verslagen!','#c5e1a5');jingle();check();}
@@ -703,10 +705,10 @@ function updHud(){
   $('pad').hidden=lv!==1;$('wpad').hidden=lv!==4;$('hud-weapon').textContent=weaponName();
   document.querySelectorAll('#wpad button').forEach(b=>b.classList.toggle('sel',b.dataset.weapon===S.w4));
   const h=$('hud-hearts');h.hidden=lv!==4;
-  if(lv===4){h.innerHTML='';for(let i=0;i<3;i++){const s=document.createElement('span');s.textContent='♥';if(i>=S.hearts)s.className='off';h.appendChild(s);}}
+  if(lv===4){h.innerHTML='';for(let i=0;i<MAXH;i++){const s=document.createElement('span');s.textContent='♥';if(i>=S.hearts)s.className='off';h.appendChild(s);}}
 }
 function startLevel(){
-  fx.length=0;toasts.length=0;CAM=0;BN=null;for(const k in keys)keys[k]=false;L=MAKERS[S.level]();S.hearts=3;S.screen='levelintro';
+  fx.length=0;toasts.length=0;CAM=0;BN=null;for(const k in keys)keys[k]=false;L=MAKERS[S.level]();S.hearts=MAXH;S.screen='levelintro';
   const lv=LV[S.level];
   overlay({eyebrow:'Level '+S.level+' van 4',title:lv.naam,text:lv.doel+' Je hebt '+NEED[S.level]+' '+lv.item+' nodig.',tip:lv.tip,btn:'Start',onBtn:()=>{S.screen='play';hide();}});
   $('help-text').textContent='Level '+S.level+': '+lv.tip;updHud();
@@ -740,7 +742,7 @@ function lose(){
   S.screen='lost';snd(60,0.6,'sawtooth',0.08);
   overlay({eyebrow:'Level 4',title:'De panter was sneller...',text:'Je hebt geen harten meer. Probeer het nog eens bij het kampvuur.',tip:LV[4].tip,btn:'Probeer opnieuw',onBtn:()=>{startLevel();}});
 }
-function reset(){CAM=0;BN=null;S.up1=false;S.up3=false;S.w4='speer';S.level=1;S.counts={1:0,2:0,3:0,4:0};S.hearts=3;fx.length=0;toasts.length=0;L=L1();showIntro();}
+function reset(){CAM=0;BN=null;S.up1=false;S.up3=false;S.w4='speer';S.level=1;S.counts={1:0,2:0,3:0,4:0};S.hearts=MAXH;fx.length=0;toasts.length=0;L=L1();showIntro();}
 
 $('btn-restart').onclick=()=>{
   if(S.screen==='intro')return;
