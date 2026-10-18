@@ -45,6 +45,12 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
 .pad button{font-size:1.15rem;padding:.75em .4em;border-radius:14px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;background:var(--panel);color:var(--cream);border:2px solid var(--line)}
 .pad button[data-act]{background:var(--leaf);color:#0b2213;border-color:var(--leaf)}
 .pad button.on{background:var(--mango);color:#0b2213;border-color:var(--mango)}
+.pill.weapon{background:var(--line)}
+.wpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wpad button{display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:14px;padding:.55em .3em;background:var(--panel);color:var(--cream);border:2px solid var(--line);touch-action:manipulation}
+.wpad button b{font-size:1.05rem}
+.wpad small{font-weight:700;font-size:.72rem;opacity:.85;line-height:1.2}
+.wpad button.sel{background:var(--mango);color:#0b2213;border-color:var(--mango)}
 details{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:8px 12px;color:var(--muted);font-size:.9rem}
 summary{cursor:pointer;font-weight:800;color:var(--cream)}
 details p{margin:8px 0 0}
@@ -67,6 +73,7 @@ details p{margin:8px 0 0}
 
   <div class="hud">
     <span class="pill" id="hud-level">Level 1</span>
+    <span class="pill weapon" id="hud-weapon">Hakmes</span>
     <div class="meter"><div id="hud-fill"></div></div>
     <span class="count" id="hud-count">0 / 10 mango's</span>
     <span class="hearts" id="hud-hearts" hidden></span>
@@ -95,6 +102,12 @@ details p{margin:8px 0 0}
     <button type="button" tabindex="-1" data-key="ArrowRight" aria-label="Naar rechts">&#9654;</button>
   </div>
 
+  <div class="wpad" id="wpad" hidden>
+    <button type="button" tabindex="-1" data-weapon="speer"><b>Speer</b><small>gewoon</small></button>
+    <button type="button" tabindex="-1" data-weapon="boog"><b>Boog</b><small>snel, goed mikken</small></button>
+    <button type="button" tabindex="-1" data-weapon="vuur"><b>Vuurspeer</b><small>dubbel, niet te ontwijken</small></button>
+  </div>
+
   <details>
     <summary>Hoe speel je dit level?</summary>
     <p id="help-text"></p>
@@ -117,16 +130,18 @@ const $=id=>document.getElementById(id);
 const NEED={1:10,2:12,3:13,4:2};
 const LV={
  1:{naam:'Het lianenpad',item:"mango's",doel:"Wandel over het pad door het oerwoud, spring over de rivieren en hak lianen door voor mango's.",
-    tip:"Loop met de pijlknoppen onder het speelveld of tik op de grond. Spring tijdens het lopen over een rivier. Hak met de knop Hak of tik op een liaan. Wespen kosten je een mango. Toetsenbord: pijltjes, pijl omhoog springt, spatie hakt."},
+    tip:"Loop met de pijlknoppen onder het speelveld of tik op de grond. Spring tijdens het lopen over een rivier. Hak met de knop Hak of tik op een liaan. Bij 4 mango's krijg je een groot kapmes dat in één slag hakt. Toetsenbord: pijltjes, pijl omhoog springt, spatie hakt."},
  2:{naam:'De graafplek',item:'insecten',doel:'Graaf in de grond en vang de insecten die tevoorschijn komen.',
     tip:'Tik twee keer op een plek gras om te graven. Komt er een insect boven, tik er dan snel op voor het wegkruipt. Hoopjes met rode mieren kun je beter laten liggen, die bijten en kosten je een insect. Toetsenbord: pijltjes en spatie.'},
  3:{naam:'De rivier',item:'vissen',doel:'Spies vissen met je speer vanaf de boomstam over de rivier.',
-    tip:"Tik in het water om je speer te gooien. Tik op de boomstam om je te verplaatsen. Rode piranha's bijten een vis van je vangst af en de krokodil breekt je speer. Toetsenbord: pijltjes om te lopen, spatie om recht naar beneden te gooien."},
+    tip:"Tik in het water om je speer te gooien. Tik op de boomstam om je te verplaatsen. Bij 5 vissen krijg je een drietand die makkelijker raakt. Piranha's kosten een vis en de krokodil breekt je speer. Toetsenbord: pijltjes om te lopen, spatie om recht naar beneden te gooien."},
  4:{naam:'De nacht van de panters',item:'panters',doel:'Versla twee sterke panters voor ze bij je kampvuur zijn.',
-    tip:'Tik op een panter om je speer te gooien. De eerste panter heeft 6 levens, de tweede 8. Ze springen over je speer en maken van dichtbij een grote sprong. Mik dan hoger. Toetsenbord: spatie gooit naar de panter.'}
+    tip:'Kies je wapen onder het speelveld en tik op een panter om te gooien. De boog schiet snel maar je moet goed mikken. De vuurspeer doet dubbele schade en panters kunnen hem niet ontwijken. De panters hebben 6 en 8 levens en springen naar je vuur. Toetsenbord: 1, 2, 3 kiest, spatie gooit.'}
 };
-const S={screen:'intro',level:1,counts:{1:0,2:0,3:0,4:0},hearts:3,muted:false};
-let L=null,time=0,CAM=0;
+const S={screen:'intro',level:1,counts:{1:0,2:0,3:0,4:0},hearts:3,muted:false,up1:false,up3:false,w4:'speer'};
+const WEAP={speer:{naam:'Speer',cd:0.55,v:660,dmg:1,hb:1,dodge:true},boog:{naam:'Boog',cd:0.28,v:980,dmg:1,hb:0.55,dodge:true},vuur:{naam:'Vuurspeer',cd:1.05,v:600,dmg:2,hb:1,dodge:false}};
+let L=null,time=0,CAM=0,BN=null;
+function banner(t){BN={t,life:2.8};[392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>snd(f,0.18,'triangle',0.07),i*90));}
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -168,6 +183,11 @@ function drawFx(c){
 function drawTool(c,tool){
   if(tool==='mes'){c.fillStyle='#4a3a2a';c.fillRect(18,-4,10,8);c.fillStyle='#cfd8dc';c.beginPath();c.moveTo(28,-5);c.lineTo(64,-9);c.lineTo(70,0);c.lineTo(62,7);c.lineTo(28,5);c.closePath();c.fill();}
   else if(tool==='schep'){c.fillStyle='#6d4c2a';c.fillRect(18,-3,34,6);c.fillStyle='#90a4ae';c.beginPath();c.moveTo(52,-9);c.lineTo(72,-6);c.lineTo(72,6);c.lineTo(52,9);c.closePath();c.fill();}
+  else if(tool==='kapmes'){c.fillStyle='#3e2723';c.fillRect(14,-5,14,10);c.fillStyle='#ffca28';c.fillRect(26,-7,4,14);c.fillStyle='#eceff1';c.beginPath();c.moveTo(30,-6);c.lineTo(80,-14);c.lineTo(92,-2);c.lineTo(80,9);c.lineTo(30,6);c.closePath();c.fill();c.strokeStyle='#ffd54f';c.lineWidth=2;c.beginPath();c.moveTo(32,-5);c.lineTo(82,-13);c.stroke();}
+  else if(tool==='drietand'){c.fillStyle='#6d4c2a';c.fillRect(-20,-2.5,76,5);c.fillStyle='#b0bec5';c.fillRect(54,-11,6,22);c.beginPath();c.moveTo(58,-11);c.lineTo(76,-9);c.lineTo(58,-6);c.fill();c.beginPath();c.moveTo(58,-2.5);c.lineTo(82,0);c.lineTo(58,2.5);c.fill();c.beginPath();c.moveTo(58,6);c.lineTo(76,9);c.lineTo(58,11);c.fill();}
+  else if(tool==='boog'){c.strokeStyle='#8d6e4a';c.lineWidth=4;c.beginPath();c.arc(22,0,26,-1.25,1.25);c.stroke();c.strokeStyle='#eceff1';c.lineWidth=1.2;c.beginPath();c.moveTo(22+26*Math.cos(-1.25),26*Math.sin(-1.25));c.lineTo(22+26*Math.cos(1.25),26*Math.sin(1.25));c.stroke();}
+  else if(tool==='pijl'){c.fillStyle='#a1887f';c.fillRect(-14,-1.5,44,3);c.fillStyle='#eceff1';c.beginPath();c.moveTo(30,-4);c.lineTo(40,0);c.lineTo(30,4);c.fill();c.fillStyle='#ef5350';c.beginPath();c.moveTo(-14,0);c.lineTo(-20,-5);c.lineTo(-8,0);c.lineTo(-20,5);c.fill();}
+  else if(tool==='vuur'){c.fillStyle='#4e342e';c.fillRect(-20,-2.5,80,5);c.fillStyle='#ff7043';c.beginPath();c.moveTo(60,-6);c.lineTo(78,0);c.lineTo(60,6);c.closePath();c.fill();for(let i=0;i<3;i++){c.fillStyle=i===1?'#ffeb3b':'#ff9800';const fl=6+Math.sin(time*25+i*2)*3;c.beginPath();c.ellipse(66+i*3,-4-i*2,fl,4,0,0,TAU);c.fill();}}
   else if(tool==='speer'){c.fillStyle='#6d4c2a';c.fillRect(-20,-2.5,80,5);c.fillStyle='#cfd8dc';c.beginPath();c.moveTo(60,-6);c.lineTo(78,0);c.lineTo(60,6);c.closePath();c.fill();}
 }
 function drawHuman(c,x,gy,face,o){
@@ -259,16 +279,16 @@ function L1(){
   }
   function hak(){
     if(p.swing>0||p.stun>0||p.air)return;p.swing=1;
-    const l=lianas.find(l=>l.fall===0&&l.grow>=1&&l.wait<=0&&Math.abs(l.x-p.x)<60);
+    const l=lianas.find(l=>l.fall===0&&l.grow>=1&&l.wait<=0&&Math.abs(l.x-p.x)<(S.up1?85:60));
     if(!l){snd(180,0.06,'sawtooth',0.03);return;}
-    l.hp--;l.shake=1;burst(l.x,l.len-20,'#7ccd6b',6,120);
+    l.hp-=S.up1?2:1;l.shake=1;burst(l.x,l.len-20,'#7ccd6b',S.up1?12:6,120);
     if(l.hp<=0){
       l.fall=0.001;snd(330,0.15,'triangle');
       if(l.mango)mangos.push({x:l.x,y:l.len,vx:rnd(50,120)*(Math.random()<0.5?-1:1),vy:-40,ground:false,t:0});
       if(l.wasp){for(let i=0;i<7;i++)wasps.push({x:l.x+rnd(-10,10),y:l.len*0.5,t:4.5,ph:rnd(0,6)});toast(l.x,l.len*0.5-30,'Wespen!','#ffd84d');snd(520,0.35,'sawtooth',0.03);}
     }else snd(240,0.07,'square',0.04);
   }
-  function collect(m,i){mangos.splice(i,1);S.counts[1]++;snd(880,0.1,'triangle');toast(m.x,m.y-30,'+1 mango','#ffd166');burst(m.x,m.y,'#f6a21c',8,120);check();}
+  function collect(m,i){mangos.splice(i,1);S.counts[1]++;if(!S.up1&&S.counts[1]>=4){S.up1=true;banner('Nieuw wapen: groot kapmes!');}snd(880,0.1,'triangle');toast(m.x,m.y-30,'+1 mango','#ffd166');burst(m.x,m.y,'#f6a21c',8,120);check();}
   function splash(x,y){burst(x,y,'#9fd3ff',14,180);snd(150,0.3,'sine',0.08);}
   return{
     tap(x,y){
@@ -395,7 +415,7 @@ function L1(){
       wasps.forEach(w=>{c.fillStyle='#ffd54f';c.beginPath();c.ellipse(w.x,w.y,5,3.5,0,0,TAU);c.fill();c.fillStyle='#222';c.fillRect(w.x-1,w.y-3,2,7);c.fillStyle='rgba(255,255,255,.6)';c.beginPath();c.ellipse(w.x,w.y-4,4,2,0,0,TAU);c.fill();});
       const sh=p.stun>0?Math.sin(time*40)*3:0;
       if(!p.air){c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(p.x,G+2,20,5,0,0,TAU);c.fill();}
-      drawHuman(c,p.x+sh,p.y,p.face,{tool:'mes',swing:p.swing>0?Math.sin(p.swing*Math.PI):0});
+      drawHuman(c,p.x+sh,p.y,p.face,{tool:S.up1?'kapmes':'mes',swing:p.swing>0?Math.sin(p.swing*Math.PI):0});
       if(p.stun>0){c.font='900 18px Nunito, sans-serif';c.fillStyle='#ffd84d';c.textAlign='center';c.fillText('* * *',p.x,p.y-110);c.textAlign='left';}
       c.restore();
       c.fillStyle='rgba(255,255,255,.55)';
@@ -495,7 +515,7 @@ function L3(){
   }
   for(let i=0;i<7;i++)spawn(true);
   function throwAt(tx,ty){
-    if(p.cool>0||p.broken>0)return;p.cool=0.55;
+    if(p.cool>0||p.broken>0)return;p.cool=S.up3?0.35:0.55;
     const sx=p.x,sy=PY-50;let dx=tx-sx,dy=ty-sy;if(dy<60)dy=60;const d=Math.hypot(dx,dy);
     spears.push({x:sx,y:sy,vx:dx/d*560,vy:dy/d*560});if(Math.abs(dx)>10)p.face=dx<0?-1:1;snd(700,0.08,'triangle',0.04);
   }
@@ -516,10 +536,10 @@ function L3(){
         if(s.y>H+10||s.x<-20||s.x>W+20){spears.splice(i,1);continue;}
         let hit=false;
         for(let j=fish.length-1;j>=0;j--){
-          const f=fish[j],rx=f.kind==='krok'?70:30*f.s,ry=f.kind==='krok'?16:14*f.s;
+          const f=fish[j],big=S.up3&&f.kind!=='krok'?1.6:1,rx=(f.kind==='krok'?70:30*f.s)*big,ry=(f.kind==='krok'?16:14*f.s)*big;
           if(Math.abs(s.x-f.x)<rx&&Math.abs(s.y-f.y)<ry){
             hit=true;
-            if(f.kind==='vis'){S.counts[3]++;toast(f.x,f.y-20,'+1 vis','#b3e5fc');burst(f.x,f.y,'#e3f2fd',10,140);snd(880,0.1,'triangle');fish.splice(j,1);check();}
+            if(f.kind==='vis'){S.counts[3]++;if(!S.up3&&S.counts[3]>=5){S.up3=true;banner('Nieuw wapen: drietand!');}toast(f.x,f.y-20,'+1 vis','#b3e5fc');burst(f.x,f.y,'#e3f2fd',10,140);snd(880,0.1,'triangle');fish.splice(j,1);check();}
             else if(f.kind==='piranha'){if(S.counts[3]>0){S.counts[3]--;toast(f.x,f.y-20,'Piranha! -1 vis','#ff8a65');}else toast(f.x,f.y-20,'Piranha!','#ff8a65');snd(110,0.35,'sawtooth',0.07);burst(f.x,f.y,'#e53935',10,140);fish.splice(j,1);updHud();}
             else{p.broken=2.2;toast(f.x,f.y-30,'Krak! Speer stuk','#ffcc80');snd(90,0.4,'sawtooth',0.08);burst(s.x,s.y,'#a1887f',8,120);}
             break;
@@ -536,8 +556,8 @@ function L3(){
       fish.forEach(f=>drawFish(c,f));
       c.fillStyle='#6d4c2a';c.fillRect(0,PY-14,W,24);c.fillStyle='#8d6e4a';c.fillRect(0,PY-14,W,6);
       c.strokeStyle='#4e3418';c.lineWidth=2;for(let x=40;x<W;x+=90){c.beginPath();c.ellipse(x,PY-2,14,6,0,0,TAU);c.stroke();}
-      spears.forEach(s=>{c.save();c.translate(s.x,s.y);c.rotate(Math.atan2(s.vy,s.vx));drawTool(c,'speer');c.restore();});
-      drawHuman(c,p.x,PY-12,p.face,{tool:p.broken>0?'':'speer',angle:p.cool>0.3?0.9:0.4});
+      spears.forEach(s=>{c.save();c.translate(s.x,s.y);c.rotate(Math.atan2(s.vy,s.vx));drawTool(c,S.up3?'drietand':'speer');c.restore();});
+      drawHuman(c,p.x,PY-12,p.face,{tool:p.broken>0?'':(S.up3?'drietand':'speer'),angle:p.cool>0.3?0.9:0.4});
       if(p.broken>0){c.font='900 16px Nunito, sans-serif';c.fillStyle='#ffcc80';c.textAlign='center';c.fillText('nieuwe speer... '+Math.ceil(p.broken),p.x,PY-118);c.textAlign='left';}
     }
   };
@@ -558,9 +578,11 @@ function L4(){
   }
   function aimPoint(){return pan?{x:pan.x,y:pan.y+pan.jy-40*pan.big}:null;}
   function throwAt(tx,ty){
-    if(p.cool>0)return;p.cool=0.55;p.anim=1;
+    const w=WEAP[S.w4];
+    if(p.cool>0)return;p.cool=w.cd;p.anim=1;
     const sx=PX,sy=GY-62,dx=tx-sx,dy=ty-sy,d=Math.hypot(dx,dy)||1;
-    spears.push({x:sx,y:sy,vx:dx/d*660,vy:dy/d*660,seen:false});if(Math.abs(dx)>10)p.face=dx<0?-1:1;snd(650,0.08,'triangle',0.04);
+    spears.push({x:sx,y:sy,vx:dx/d*w.v,vy:dy/d*w.v,seen:!w.dodge,kind:S.w4,dmg:w.dmg,hb:w.hb});if(Math.abs(dx)>10)p.face=dx<0?-1:1;
+    if(S.w4==='boog')snd(900,0.06,'triangle',0.05);else if(S.w4==='vuur')snd(200,0.25,'sawtooth',0.05);else snd(650,0.08,'triangle',0.04);
   }
   function toEdge(){pan.side=Math.random()<0.5?-1:1;pan.x=pan.side<0?-110:W+110;pan.jy=0;pan.vy=0;}
   function hitPlayer(){
@@ -571,6 +593,7 @@ function L4(){
   return{
     tap(x,y){throwAt(x,y);},
     key(k){
+      if(k==='1'||k==='2'||k==='3'){setWeapon(['speer','boog','vuur'][+k-1]);return;}
       if(k==='ArrowLeft'||k==='a')throwAt(0,GY-30);
       else if(k==='ArrowRight'||k==='d')throwAt(W,GY-30);
       else if(k===' '||k==='ArrowUp'){const a=pan&&pan.state!=='dead'&&pan.state!=='eyes'?aimPoint():null;throwAt(a?a.x:PX+p.face*300,a?a.y:GY-30);}
@@ -607,14 +630,17 @@ function L4(){
       }
       for(let i=spears.length-1;i>=0;i--){
         const s=spears[i];s.x+=s.vx*dt;s.y+=s.vy*dt;
+        if(s.kind==='vuur'&&Math.random()<0.6)fx.push({x:s.x-s.vx*0.02,y:s.y-s.vy*0.02,vx:rnd(-20,20),vy:rnd(-40,0),t:rnd(0.2,0.45),col:Math.random()<0.5?'#ff9800':'#ffeb3b',r:rnd(2,4)});
         if(s.y>H+20||s.x<-30||s.x>W+30||s.y<-20){spears.splice(i,1);continue;}
         const P=pan;
         if(P&&P.state!=='dead'&&P.state!=='eyes'){
           const a=aimPoint();
-          if(Math.abs(s.x-a.x)<60*P.big&&Math.abs(s.y-a.y)<42*P.big){
-            P.hp--;burst(s.x,s.y,'#ffcc80',8,160);snd(300,0.1,'square',0.05);toast(P.x,a.y-70,'Raak!','#ffd166');spears.splice(i,1);
-            if(P.state==='pounce'){P.knocked=true;P.vx=P.side*260;}
-            else if(P.state==='approach'){P.flinch=0.25;}
+          if(Math.abs(s.x-a.x)<60*P.big*s.hb&&Math.abs(s.y-a.y)<42*P.big*Math.max(0.7,s.hb)){
+            const fire=s.kind==='vuur';
+            P.hp=Math.max(0,P.hp-s.dmg);burst(s.x,s.y,fire?'#ff9800':'#ffcc80',fire?16:8,fire?200:160);snd(fire?180:300,0.12,'square',0.05);
+            toast(P.x,a.y-70,fire?'Raak! -2':'Raak!',fire?'#ff9800':'#ffd166');spears.splice(i,1);
+            if(P.state==='pounce'){P.knocked=true;P.vx=P.side*(fire?340:260);}
+            else if(P.state==='approach'){P.flinch=fire?0.6:0.25;}
             if(P.hp<=0){P.state='dead';S.counts[4]++;toast(P.x,a.y-90,'Panter verslagen!','#c5e1a5');jingle();check();}
           }
         }
@@ -647,8 +673,9 @@ function L4(){
           if(P.state==='crouch'){c.font='900 18px Nunito, sans-serif';c.fillStyle='#ff7043';c.textAlign='center';c.fillText('Pas op, hij springt!',P.x,GY-150);c.textAlign='left';}
         }
       }
-      spears.forEach(s=>{c.save();c.translate(s.x,s.y);c.rotate(Math.atan2(s.vy,s.vx));drawTool(c,'speer');c.restore();});
-      drawHuman(c,PX,GY,p.face,{tool:p.anim>0.5?'':'speer',angle:p.anim>0?-0.2:0.5});
+      spears.forEach(s=>{c.save();c.translate(s.x,s.y);c.rotate(Math.atan2(s.vy,s.vx));drawTool(c,s.kind==='boog'?'pijl':s.kind==='vuur'?'vuur':'speer');c.restore();});
+      const wt=S.w4==='boog'?'boog':(p.anim>0.5?'':S.w4==='vuur'?'vuur':'speer');
+      drawHuman(c,PX,GY,p.face,{tool:wt,angle:S.w4==='boog'?-0.15:(p.anim>0?-0.2:0.5)});
       if(flash>0){c.fillStyle='rgba(220,40,40,'+(flash*0.6).toFixed(2)+')';c.fillRect(0,0,W,H);}
     }
   };
@@ -666,17 +693,20 @@ function overlay(o){
   $('overlay').hidden=false;setTimeout(()=>{try{b.focus({preventScroll:true});}catch(e){}},30);
 }
 function hide(){$('overlay').hidden=true;if(document.activeElement)document.activeElement.blur();try{cv.focus({preventScroll:true});}catch(e){}}
+function setWeapon(w){if(!WEAP[w])return;S.w4=w;updHud();snd(w==='boog'?900:w==='vuur'?300:600,0.08,'triangle',0.05);}
+function weaponName(){const lv=S.level;return lv===1?(S.up1?'Groot kapmes':'Hakmes'):lv===2?'Schep':lv===3?(S.up3?'Drietand':'Speer'):WEAP[S.w4].naam;}
 function updHud(){
   const lv=S.level,n=Math.min(S.counts[lv],NEED[lv]);
   $('hud-level').textContent='Level '+lv;
   $('hud-count').textContent=n+' / '+NEED[lv]+' '+LV[lv].item;
   $('hud-fill').style.width=(100*n/NEED[lv])+'%';
-  $('pad').hidden=lv!==1;
+  $('pad').hidden=lv!==1;$('wpad').hidden=lv!==4;$('hud-weapon').textContent=weaponName();
+  document.querySelectorAll('#wpad button').forEach(b=>b.classList.toggle('sel',b.dataset.weapon===S.w4));
   const h=$('hud-hearts');h.hidden=lv!==4;
   if(lv===4){h.innerHTML='';for(let i=0;i<3;i++){const s=document.createElement('span');s.textContent='♥';if(i>=S.hearts)s.className='off';h.appendChild(s);}}
 }
 function startLevel(){
-  fx.length=0;toasts.length=0;CAM=0;for(const k in keys)keys[k]=false;L=MAKERS[S.level]();S.hearts=3;S.screen='levelintro';
+  fx.length=0;toasts.length=0;CAM=0;BN=null;for(const k in keys)keys[k]=false;L=MAKERS[S.level]();S.hearts=3;S.screen='levelintro';
   const lv=LV[S.level];
   overlay({eyebrow:'Level '+S.level+' van 4',title:lv.naam,text:lv.doel+' Je hebt '+NEED[S.level]+' '+lv.item+' nodig.',tip:lv.tip,btn:'Start',onBtn:()=>{S.screen='play';hide();}});
   $('help-text').textContent='Level '+S.level+': '+lv.tip;updHud();
@@ -710,7 +740,7 @@ function lose(){
   S.screen='lost';snd(60,0.6,'sawtooth',0.08);
   overlay({eyebrow:'Level 4',title:'De panter was sneller...',text:'Je hebt geen harten meer. Probeer het nog eens bij het kampvuur.',tip:LV[4].tip,btn:'Probeer opnieuw',onBtn:()=>{startLevel();}});
 }
-function reset(){CAM=0;S.level=1;S.counts={1:0,2:0,3:0,4:0};S.hearts=3;fx.length=0;toasts.length=0;L=L1();showIntro();}
+function reset(){CAM=0;BN=null;S.up1=false;S.up3=false;S.w4='speer';S.level=1;S.counts={1:0,2:0,3:0,4:0};S.hearts=3;fx.length=0;toasts.length=0;L=L1();showIntro();}
 
 $('btn-restart').onclick=()=>{
   if(S.screen==='intro')return;
@@ -734,6 +764,10 @@ document.querySelectorAll('#pad button').forEach(b=>{
   b.addEventListener('contextmenu',e=>e.preventDefault());
   ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,up));
 });
+document.querySelectorAll('#wpad button').forEach(b=>{
+  b.addEventListener('mousedown',e=>e.preventDefault());
+  b.addEventListener('click',()=>setWeapon(b.dataset.weapon));
+});
 cv.addEventListener('pointerdown',e=>{
   e.preventDefault();try{cv.focus({preventScroll:true});}catch(err){}
   if(S.screen!=='play'||!L)return;
@@ -755,7 +789,12 @@ window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 let last=performance.now();
 function frame(t){
   const dt=Math.min(0.05,(t-last)/1000);last=t;time+=dt;
-  if(L){if(S.screen==='play'||S.screen==='clearing')L.update(dt);updFx(dt);L.draw(ctx);drawFx(ctx);}
+  if(L){if(S.screen==='play'||S.screen==='clearing')L.update(dt);updFx(dt);L.draw(ctx);drawFx(ctx);
+    if(BN){if(S.screen==='play'||S.screen==='clearing')BN.life-=dt;const a=Math.min(1,BN.life*2,(2.8-BN.life)*4);
+      ctx.globalAlpha=Math.max(0,a);ctx.font='28px "Luckiest Guy", Impact, sans-serif';ctx.textAlign='center';const tw=ctx.measureText(BN.t).width;
+      ctx.fillStyle='rgba(10,29,18,.85)';ctx.fillRect(W/2-tw/2-24,52,tw+48,52);ctx.strokeStyle='#f6a21c';ctx.lineWidth=3;ctx.strokeRect(W/2-tw/2-24,52,tw+48,52);
+      ctx.fillStyle='#f6a21c';ctx.fillText(BN.t,W/2,89);ctx.textAlign='left';ctx.globalAlpha=1;if(BN.life<=0)BN=null;}
+  }
   requestAnimationFrame(frame);
 }
 function boot(d){
